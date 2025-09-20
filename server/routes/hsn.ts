@@ -1,5 +1,4 @@
 import type { RequestHandler } from "express";
-import fetch from "node-fetch";
 import { z } from "zod";
 
 const QSchema = z.object({
