@@ -29,8 +29,12 @@ export const createSalesOrder: RequestHandler = async (req, res) => {
 };
 
 export const listSalesOrders: RequestHandler = async (_req, res) => {
-  const r = await pool.query(`SELECT * FROM sales_orders ORDER BY created_at DESC LIMIT 100`);
-  res.json(r.rows);
+  try {
+    const r = await pool.query(`SELECT * FROM sales_orders ORDER BY created_at DESC LIMIT 100`);
+    res.json(r.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 const InvoiceFromSO = z.object({ so_id: z.number().int(), due_date: z.string().optional() });
@@ -149,36 +153,52 @@ export const registerPayment: RequestHandler = async (req, res) => {
 };
 
 export const listInvoices: RequestHandler = async (_req, res) => {
-  const r = await pool.query(`SELECT * FROM invoices ORDER BY created_at DESC LIMIT 100`);
-  res.json(r.rows);
+  try {
+    const r = await pool.query(`SELECT * FROM invoices ORDER BY created_at DESC LIMIT 100`);
+    res.json(r.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 // Reports
 const Period = z.object({ from: z.string().optional(), to: z.string().optional() });
 
 export const reportPL: RequestHandler = async (req, res) => {
-  const { from, to } = Period.parse(req.query);
-  const params: any[] = [];
-  let where = "";
-  if (from) { where += (where?" AND ":" ") + `created_at >= $${params.length+1}`; params.push(from); }
-  if (to) { where += (where?" AND ":" ") + `created_at <= $${params.length+1}`; params.push(to); }
+  try {
+    const { from, to } = Period.parse(req.query);
+    const params: any[] = [];
+    let where = "";
+    if (from) { where += (where?" AND ":" ") + `created_at >= $${params.length+1}`; params.push(from); }
+    if (to) { where += (where?" AND ":" ") + `created_at <= $${params.length+1}`; params.push(to); }
 
-  const income = await pool.query(`SELECT COALESCE(SUM(credit - debit),0) as amount FROM ledger_entries le JOIN chart_of_accounts a ON a.id=le.account_id WHERE a.type='income'${where?" AND "+where:""}`, params);
-  const expenses = await pool.query(`SELECT COALESCE(SUM(debit - credit),0) as amount FROM ledger_entries le JOIN chart_of_accounts a ON a.id=le.account_id WHERE a.type='expense'${where?" AND "+where:""}`, params);
-  res.json({ income: Number(income.rows[0].amount), expenses: Number(expenses.rows[0].amount), net: Number(income.rows[0].amount) - Number(expenses.rows[0].amount) });
+    const income = await pool.query(`SELECT COALESCE(SUM(credit - debit),0) as amount FROM ledger_entries le JOIN chart_of_accounts a ON a.id=le.account_id WHERE a.type='income'${where?" AND "+where:""}`, params);
+    const expenses = await pool.query(`SELECT COALESCE(SUM(debit - credit),0) as amount FROM ledger_entries le JOIN chart_of_accounts a ON a.id=le.account_id WHERE a.type='expense'${where?" AND "+where:""}`, params);
+    res.json({ income: Number(income.rows[0].amount), expenses: Number(expenses.rows[0].amount), net: Number(income.rows[0].amount) - Number(expenses.rows[0].amount) });
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 export const reportBalanceSheet: RequestHandler = async (_req, res) => {
-  const assets = await pool.query(`SELECT a.name, COALESCE(SUM(le.debit - le.credit),0) AS balance FROM chart_of_accounts a LEFT JOIN ledger_entries le ON le.account_id=a.id WHERE a.type='asset' GROUP BY a.id ORDER BY a.name`);
-  const liabilities = await pool.query(`SELECT a.name, COALESCE(SUM(le.credit - le.debit),0) AS balance FROM chart_of_accounts a LEFT JOIN ledger_entries le ON le.account_id=a.id WHERE a.type='liability' GROUP BY a.id ORDER BY a.name`);
-  const equity = await pool.query(`SELECT a.name, COALESCE(SUM(le.credit - le.debit),0) AS balance FROM chart_of_accounts a LEFT JOIN ledger_entries le ON le.account_id=a.id WHERE a.type='equity' GROUP BY a.id ORDER BY a.name`);
-  res.json({ assets: assets.rows, liabilities: liabilities.rows, equity: equity.rows });
+  try {
+    const assets = await pool.query(`SELECT a.name, COALESCE(SUM(le.debit - le.credit),0) AS balance FROM chart_of_accounts a LEFT JOIN ledger_entries le ON le.account_id=a.id WHERE a.type='asset' GROUP BY a.id ORDER BY a.name`);
+    const liabilities = await pool.query(`SELECT a.name, COALESCE(SUM(le.credit - le.debit),0) AS balance FROM chart_of_accounts a LEFT JOIN ledger_entries le ON le.account_id=a.id WHERE a.type='liability' GROUP BY a.id ORDER BY a.name`);
+    const equity = await pool.query(`SELECT a.name, COALESCE(SUM(le.credit - le.debit),0) AS balance FROM chart_of_accounts a LEFT JOIN ledger_entries le ON le.account_id=a.id WHERE a.type='equity' GROUP BY a.id ORDER BY a.name`);
+    res.json({ assets: assets.rows, liabilities: liabilities.rows, equity: equity.rows });
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 export const reportStock: RequestHandler = async (_req, res) => {
-  const q = await pool.query(`SELECT p.id, p.name,
-    COALESCE(SUM(CASE WHEN sm.direction='in' THEN sm.quantity ELSE 0 END),0) -
-    COALESCE(SUM(CASE WHEN sm.direction='out' THEN sm.quantity ELSE 0 END),0) as qty
-    FROM products p LEFT JOIN stock_movements sm ON sm.product_id=p.id GROUP BY p.id ORDER BY p.name`);
-  res.json(q.rows);
+  try {
+    const q = await pool.query(`SELECT p.id, p.name,
+      COALESCE(SUM(CASE WHEN sm.direction='in' THEN sm.quantity ELSE 0 END),0) -
+      COALESCE(SUM(CASE WHEN sm.direction='out' THEN sm.quantity ELSE 0 END),0) as qty
+      FROM products p LEFT JOIN stock_movements sm ON sm.product_id=p.id GROUP BY p.id ORDER BY p.name`);
+    res.json(q.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
