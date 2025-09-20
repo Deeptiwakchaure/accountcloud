@@ -14,8 +14,12 @@ const ProductSchema = z.object({
 });
 
 export const listProducts: RequestHandler = async (_req, res) => {
-  const r = await pool.query(`SELECT * FROM products ORDER BY created_at DESC LIMIT 200`);
-  res.json(r.rows);
+  try {
+    const r = await pool.query(`SELECT * FROM products ORDER BY created_at DESC LIMIT 200`);
+    res.json(r.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 export const createProduct: RequestHandler = async (req, res) => {
