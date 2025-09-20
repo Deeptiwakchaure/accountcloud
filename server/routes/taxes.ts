@@ -10,8 +10,12 @@ const TaxSchema = z.object({
 });
 
 export const listTaxes: RequestHandler = async (_req, res) => {
-  const r = await pool.query(`SELECT * FROM taxes ORDER BY id ASC`);
-  res.json(r.rows);
+  try {
+    const r = await pool.query(`SELECT * FROM taxes ORDER BY id ASC`);
+    res.json(r.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 export const createTax: RequestHandler = async (req, res) => {
