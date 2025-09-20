@@ -1,7 +1,4 @@
--- Initialize schema and base data for docker Postgres
-\i '/docker-entrypoint-initdb.d/00-schema.sql'
-
--- Base accounts (idempotent not possible here; assumes fresh DB)
+-- Base accounts (executed after 00-schema.sql)
 INSERT INTO chart_of_accounts(name, type) VALUES
   ('Cash','asset'),
   ('Bank','asset'),
