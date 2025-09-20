@@ -8,8 +8,12 @@ const AccountSchema = z.object({
 });
 
 export const listAccounts: RequestHandler = async (_req, res) => {
-  const r = await pool.query(`SELECT * FROM chart_of_accounts ORDER BY type, name`);
-  res.json(r.rows);
+  try {
+    const r = await pool.query(`SELECT * FROM chart_of_accounts ORDER BY type, name`);
+    res.json(r.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 export const createAccount: RequestHandler = async (req, res) => {
