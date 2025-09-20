@@ -15,8 +15,12 @@ const ContactSchema = z.object({
 });
 
 export const listContacts: RequestHandler = async (_req, res) => {
-  const r = await pool.query(`SELECT * FROM contacts ORDER BY created_at DESC LIMIT 200`);
-  res.json(r.rows);
+  try {
+    const r = await pool.query(`SELECT * FROM contacts ORDER BY created_at DESC LIMIT 200`);
+    res.json(r.rows);
+  } catch (e: any) {
+    res.status(503).json({ error: "Database unavailable" });
+  }
 };
 
 export const createContact: RequestHandler = async (req, res) => {
